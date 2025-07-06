@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<!--
+ __        ___                        ____  _                            
+ \ \      / / |__   __ _ __________ _/ ___|| |_ _ __ ___  __ _ _ __ ___  
+  \ \ /\ / /| '_ \ / _` |_  /_  / _` \___ \| __| '__/ _ \/ _` | '_ ` _ \ 
+   \ V  V / | | | | (_| |/ / / / (_| |___) | |_| | |  __/ (_| | | | | | |
+    \_/\_/  |_| |_|\__,_/___/___\__,_|____/ \__|_|  \___|\__,_|_| |_| |_|
+                                                                         
+  webseite : https://life4gaming.de
+  GitHub   : https://github.com/whazza1983/streaming
+  Autor    : whazza83 / whazza1983
+-->
+<html lang="{{ lang() }}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin‑Panel</title>
+  <link rel="icon" type="image/png" sizes="48x48" href="/static/images/favicon.png" />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style_admin.css') }}">
+</head>
+<body>
+  <!-- NAVBAR -->
+  <header class="navbar">
+    <div class="navbar-left">
+      {{ _("admin_logged_in_as") }} <strong>{{ session.username }}</strong>
+    </div>
+
+    <div class="navbar-right">
+      <!-- Language switch -->
+      <div class="lang-switch-radio">
+        <input id="lang-de" type="radio" name="lang" value="de" {{ 'checked' if lang()=='de' else '' }}><label for="lang-de">DE</label>
+        <input id="lang-en" type="radio" name="lang" value="en" {{ 'checked' if lang()=='en' else '' }}><label for="lang-en">EN</label>
+      </div>
+
+      <!-- Theme toggle & Logout -->
+      <button id="toggle-theme" title="Dark/Light">☀️</button>
+      <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+  </header>
+
+  <!-- FLASH‑POPUPS -->
+  <div id="flash-popup-container" class="flash-popup-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          {% if not message.startswith('Tagesbonus:') %}
+            <div class="flash-popup flash-{{ category }}">{{ message }}</div>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <!-- MAIN GRID -->
+  <main class="admin-grid">
+
+    <!-- CREATE USER CARD -->
+    <section class="card">
+      <h2>{{ _("admin_create_user") }}</h2>
+      <form class="form-inline" method="post" action="/admin/create_user">
+        <input type="text" name="username" placeholder="{{ _("admin_username_label") }}" required>
+        <input name="password" type="password" placeholder="{{ _("admin_password_label") }}" required>
+        <label class="chk"><input type="checkbox" name="is_admin"><span>{{ _("admin_admin") }}</span></label>
+        <input type="color" name="color" value="#000000" title="{{ _("admin_name_color") }}">
+        <button class="btn-primary">{{ _("admin_create") }}</button>
+      </form>
+    </section>
+
+    <!-- USER LIST CARD -->
+    <section class="card">
+      <h2>{{ _("admin_user_list") }}</h2>
+      <ul id="user-list" class="user-list">
+        {% for user in users %}
+          {% set online_cls = 'online' if user.username in online else 'offline' %}
+          <li data-user="{{ user.username }}">
+            <span class="status-dot {{ online_cls }}">●</span>
+
+            <span class="username" style="color:{{ user.color }}">
+              {{ user.username }}
+              {% if user.is_admin %}<em class="admin-tag">(Admin)</em>{% endif %}
+            </span>
+
+            {% if not user.is_admin %}
+              <!-- Active / Deactivate toggle -->
+              <button class="toggle-active {{ 'active' if user.is_active else '' }}" title="{{ _('admin_deactivate') if user.is_active else _('admin_activate') }}"></button>
+            {% endif %}
+
+            <span class="settings-btn" title="{{ _("admin_settings") }}">⚙️</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <!-- CHAT HISTORY & STREAM SUFFIX CARD -->
+    <section class="card">
+      <h2>{{ _("admin_chat_history") }}</h2>
+      <form method="post" action="/admin/clear_chat">
+        <button class="btn-danger" onclick="return confirm('{{ _("admin_confirm_clear_chat") }}')">
+          {{ _("admin_clear_history") }}
+        </button>
+      </form>
+
+      <h2>{{ _("admin_change_stream_suffix") }}</h2>
+      <form method="post" action="/admin/update_stream_suffix">
+        <input name="stream_suffix" type="text" placeholder="z. B. whazzastream" value="{{ stream_suffix }}" required>
+        <button class="btn-primary">{{ _("admin_save") }}</button>
+      </form>
+    </section>
+
+    <!-- DISCORD MESSAGE CARD -->
+    <section class="card wide">
+      <h2>{{ _("admin_discord_message") }}</h2>
+      <form class="form-discord" action="{{ url_for('admin_send_discord') }}" method="post">
+        <textarea name="discord_text" placeholder="{{ _("admin_discord_text") }}" rows="4" required></textarea>
+        <button class="btn-primary">{{ _("admin_send") }} ➤</button>
+      </form>
+    </section>
+
+    <!-- ADD SMILIE CARD -->
+    <section class="card">
+      <h2>{{ _("admin_add_smilie") }}</h2>
+      <form class="form-grid" method="post" action="/admin/upload_smilie" enctype="multipart/form-data">
+        <div class="row-flex">
+          <div class="field-grow">
+            <label for="smilie_name">{{ _("admin_name") }}</label>
+            <input id="smilie_name" name="smilie_name" type="text" placeholder="{{ _("admin_smilie_name_pholder") }}" required>
+          </div>
+          <div class="field-fixed">
+            <label for="smilie_price">{{ _("admin_price") }}</label>
+            <input id="smilie_price" name="smilie_price" type="number" min="0" value="50" required>
+          </div>
+        </div>
+
+        <label for="smilie_file">{{ _("admin_file") }}</label>
+        <div class="file-upload-wrapper">
+          <label for="smilie_file" class="file-upload-label">📁 {{ _("admin_choose_file") }}</label>
+          <span id="file-upload-filename" class="file-upload-filename">{{ _("admin_no_file_chosen") }}</span>
+          <input id="smilie_file" name="smilie_file" type="file" accept=".webp" required hidden>
+        </div>
+
+        <label></label>
+        <button class="btn-primary mt-1">{{ _("admin_upload") }}</button>
+      </form>
+    </section>
+
+    <!-- EXISTING SMILIES CARD -->
+    <section class="card smilie-card">
+      <h2 class="smilie-title">{{ _("admin_existing_smilies") }}</h2>
+      <div class="smilie-wrapper">
+        <div class="smilie-grid">
+          {% for name, price in smilies.items() %}
+            <div class="smilie-box">
+              <img src="{{ url_for('static', filename='smilie/' + name + '.webp') }}" alt="{{ name }}" title=":{{ name }}:" />
+              <div>:{{ name }}:</div>
+              <span class="smilie-price">{{ price }}</span>
+              <div class="smilie-actions">
+                <a href="{{ url_for('admin_delete_smilie', name=name) }}" onclick="return confirm('{{ _("admin_delete_smilie") }}')">✖</a>
+                <a href="#" class="edit-price" title="{{ _("admin_change_price") }}" data-sname="{{ name }}" data-price="{{ price }}">✏️</a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <!-- DISCORD SETTINGS CARD -->
+    <section class="card">
+      <h2>{{ _("admin_discord_settings") }}</h2>
+      <form class="form-grid" method="post" action="{{ url_for('update_discord_webhook') }}">
+        <label for="webhook_url">{{ _("admin_webhook") }}</label>
+        <input id="webhook_url" name="webhook_url" type="url" value="{{ current_webhook }}" required>
+
+        <label for="webhook_username">{{ _("admin_bot_name") }}</label>
+        <input id="webhook_username" name="webhook_username" type="text" value="{{ current_botname }}">
+
+        <label for="webhook_avatar">{{ _("admin_bot_avatar") }}</label>
+        <input id="webhook_avatar" name="webhook_avatar" type="url" value="{{ current_avatar }}">
+
+        <div></div>
+        <button class="btn-primary">{{ _("admin_save") }}</button>
+      </form>
+    </section>
+
+    <!-- REWARD SETTINGS CARD -->
+    <section class="card">
+      <h2>{{ _("admin_reward_settings") }}</h2>
+      <form class="form-grid" method="post" action="/admin/update_smilie_cost">
+        <label for="daily_bonus">{{ _("admin_daily_login_bonus") }}</label>
+        <input id="daily_bonus" name="daily_bonus" type="number" min="0" value="{{ setting.daily_bonus | default(20) }}">
+
+        <label for="stream_bonus_points">{{ _("admin_stream_viewer_bonus") }}</label>
+        <input id="stream_bonus_points" name="stream_bonus_points" type="number" min="0" value="{{ setting.stream_bonus_points | default(20) }}">
+
+        <label for="stream_bonus_interval">{{ _("admin_interval_minutes") }}</label>
+        <input id="stream_bonus_interval" name="stream_bonus_interval" type="number" min="1" value="{{ setting.stream_bonus_interval | default(30) }}">
+
+        <div></div>
+        <button class="btn-primary">{{ _("admin_save") }}</button>
+      </form>
+    </section>
+
+    <!-- STREAM KEYS CARD -->
+    <section class="card">
+      <h2>{{ _("admin_manage_keys") }}</h2>
+      <form class="form-inline" method="post" action="{{ url_for('add_stream_key') }}">
+        <input name="stream_key" type="text" placeholder="{{ _("admin_new_stream_key") }}" required>
+        <button class="btn-primary">{{ _("admin_add") }}</button>
+      </form>
+
+      <ul class="streamkey-list">
+        {% if stream_keys %}
+          {% for sk in stream_keys %}
+            <li data-key-id="{{ sk.id }}">
+              <span>{{ sk.key }}</span>
+              <a class="del" href="{{ url_for('delete_stream_key', key_id=sk.id) }}" onclick="return confirm('{{ _("admin_delete_stream_key") }}')">✖</a>
+            </li>
+          {% endfor %}
+        {% else %}
+          <li>{{ _("admin_no_stream_keys") }}</li>
+        {% endif %}
+      </ul>
+    </section>
+
+    <!-- HLS SETTINGS CARD -->
+    <section class="card">
+      <h2>{{ _("admin_hls_settings") }}</h2>
+      <form class="form-grid" method="post" action="{{ url_for('update_hls_secret') }}">
+        <label for="hls_secret">{{ _("admin_hls_secret") }}</label>
+        <div class="pw-wrapper"><input id="hls_secret" name="hls_secret" type="password" value="{{ setting.hls_secret or '' }}" required><span id="toggle-secret" class="eye">👁️</span></div>
+        <div></div>
+        <button class="btn-primary">{{ _("admin_save") }}</button>
+      </form>
+      <p class="hint">{{ _("admin_tokens_invalid_hint") }}</p>
+    </section>
+
+  </main>
+
+  <!-- USER SETTINGS MODAL -->
+  <div id="user-modal" class="modal">
+    <div class="dialog">
+      <h3>{{ _("admin_settings_for") }} <span id="m-username"></span></h3>
+
+      <label>{{ _("admin_new_password") }}
+        <input id="m-password" type="password" placeholder="{{ _("admin_empty_unchanged") }}">
+      </label>
+
+      <div class="field"><label for="m-color">{{ _("admin_color") }}</label><input id="m-color" type="color"></div>
+
+      <label>{{ _("admin_coins") }} <input id="m-points" type="number" min="0"></label>
+
+      <div class="btn-row">
+        <button id="m-save"   class="btn-primary">{{ _("admin_save") }}</button>
+        <button id="m-delete" class="btn-danger">{{ _("admin_delete") }}</button>
+        <button id="m-close">{{ _("admin_cancel") }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script>
+    /* Language selector */
+    document.querySelectorAll('.lang-switch-radio input[name="lang"]').forEach(rb => {
+      rb.onchange = () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('lang', rb.value); // ?lang=de / ?lang=en
+        window.location.href = url.toString();  // reload page
+      };
+    });
+
+    /* Theme toggle */
+    const toggleBtn  = document.getElementById('toggle-theme');
+    const applyTheme = t => {
+      const dark = t === 'dark';
+      document.body.classList.toggle('dark', dark);
+      document.documentElement.classList.toggle('dark', dark);
+      toggleBtn.textContent = dark ? '🌙' : '☀️';
+      localStorage.setItem('theme', dark ? 'dark' : 'light');
+    };
+    applyTheme(localStorage.getItem('theme') || 'light');
+    toggleBtn.onclick = () => applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
+
+    /* Generic DOM‑ready work */
+    document.addEventListener('DOMContentLoaded', () => {
+      // Fade‑out flash popups
+      document.querySelectorAll('.flash-popup').forEach(p => {
+        setTimeout(() => {
+          p.style.transition = 'opacity .5s, transform .5s';
+          p.style.opacity    = '0';
+          p.style.transform  = 'translateX(150%)';
+          setTimeout(() => p.remove(), 500);
+        }, 5000);
+      });
+
+      // Show chosen smilie filename
+      const smilieInput = document.getElementById('smilie_file');
+      if (smilieInput) {
+        smilieInput.addEventListener('change', function () {
+          document.getElementById('file-upload-filename').textContent = this.files.length ? this.files[0].name : '{{ _("admin_no_file_chosen") }}';
+        });
+      }
+
+      /* User‑modal logic */
+      const userModal = document.getElementById('user-modal');
+      const mUsername = document.getElementById('m-username');
+      const mPw       = document.getElementById('m-password');
+      const mColor    = document.getElementById('m-color');
+      const mPoints   = document.getElementById('m-points');
+      const mSave     = document.getElementById('m-save');
+      const mDelete   = document.getElementById('m-delete');
+      const mClose    = document.getElementById('m-close');
+      let currentUser = null;
+
+      const userList = document.getElementById('user-list');
+      userList.addEventListener('click', async ev => {
+        const target   = ev.target;
+        const li       = target.closest('li[data-user]');
+        if (!li) return;
+        const username = li.dataset.user;
+
+        // Open modal
+        if (target.classList.contains('settings-btn')) {
+          try {
+            const r = await fetch(`/admin/user_info/${encodeURIComponent(username)}`);
+            if (!r.ok) throw new Error();
+            const data = await r.json();
+
+            currentUser      = username;
+            mUsername.textContent = username;
+            mColor.value     = data.color  || '#000000';
+            mPoints.value    = data.points ?? 0;
+            mPw.value        = '';
+            userModal.classList.add('active');
+          } catch {
+            alert('{{ _("admin_error_loading_user") }}');
+          }
+          return;
+        }
+
+        // Toggle active state
+        if (target.classList.contains('toggle-active')) {
+          const btn          = target;
+          const willActivate = !btn.classList.contains('active');
+          try {
+            const r = await fetch(`/admin/toggle_user/${encodeURIComponent(username)}`, {
+              method : 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body   : JSON.stringify({ active: willActivate })
+            });
+            if (!r.ok) throw new Error();
+
+            btn.classList.toggle('active', willActivate);
+            btn.title = willActivate ? '{{ _("admin_deactivate") }}' : '{{ _("admin_activate") }}';
+          } catch {
+            alert('{{ _("admin_error_toggle") }}');
+          }
+        }
+      });
+
+      // Save button inside modal
+      mSave.onclick = async () => {
+        const payload = { color : mColor.value, points: parseInt(mPoints.value, 10) };
+        if (mPw.value.trim()) payload.new_pw = mPw.value.trim();
+        try {
+          const r = await fetch(`/admin/update_user/${currentUser}`, {
+            method : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body   : JSON.stringify(payload)
+          });
+          if (r.ok) location.reload(); else alert('{{ _("admin_error_save") }}');
+        } catch { alert('{{ _("admin_network_error") }}'); }
+      };
+
+      // Delete button inside modal
+      mDelete.onclick = async () => {
+        if (!confirm('{{ _("admin_confirm_delete_user") }}')) return;
+        try {
+          const r = await fetch(`/admin/delete_user/${currentUser}`);
+          if (r.ok) location.reload(); else alert('{{ _("admin_error_delete") }}');
+        } catch { alert('{{ _("admin_network_error") }}'); }
+      };
+
+      // Modal close handlers
+      [mClose, userModal].forEach(el => el.addEventListener('click', ev => {
+        if (ev.target === el || ev.target === userModal) userModal.classList.remove('active');
+      }));
+    });
+  </script>
+
+  <script>
+    /* Inline price‑editor for smilies */
+    document.querySelectorAll('.edit-price').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.preventDefault();
+        const name = btn.dataset.sname;
+        const oldP = btn.dataset.price;
+        const np   = prompt(`{{ _("admin_new_price_for") }} :${name}:`, oldP);
+        if (np === null) return;
+        if (!/^[0-9]+$/.test(np.trim())) { alert('{{ _("admin_only_integer") }}'); return; }
+        const body = new URLSearchParams({ [name]: np.trim() });
+        try {
+          const r = await fetch('/admin/update_smilie_prices', {
+            method : 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body   : body.toString()
+          });
+          if (!r.ok) throw new Error(r.status);
+          location.reload();
+        } catch(err) {
+          alert('{{ _("admin_error_save_generic") }} (' + err + ')');
+        }
+      });
+    });
+
+    /* HLS secret visibility toggle */
+    document.getElementById('toggle-secret')?.addEventListener('click', () => {
+      const inp = document.getElementById('hls_secret');
+      const eye = document.getElementById('toggle-secret');
+      const isPw = inp.type === 'password';
+      inp.type = isPw ? 'text' : 'password';
+      eye.textContent = isPw ? '🙈' : '👁️';
+    });
+
+    /* Remember and restore the last Discord message */
+    document.addEventListener('DOMContentLoaded', () => {
+      const discordTextarea = document.querySelector('textarea[name="discord_text"]');
+      if (!discordTextarea) return;
+
+      discordTextarea.value = localStorage.getItem('lastDiscordMessage') || '';
+
+      const discordForm = discordTextarea.form;
+      discordForm?.addEventListener('submit', () => {
+      localStorage.setItem('lastDiscordMessage', discordTextarea.value);
+      });
+    });
+  </script>
+</body>
+</html>

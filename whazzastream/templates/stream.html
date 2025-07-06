@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<!--
+ __        ___                        ____  _                            
+ \ \      / / |__   __ _ __________ _/ ___|| |_ _ __ ___  __ _ _ __ ___  
+  \ \ /\ / /| '_ \ / _` |_  /_  / _` \___ \| __| '__/ _ \/ _` | '_ ` _ \ 
+   \ V  V / | | | | (_| |/ / / / (_| |___) | |_| | |  __/ (_| | | | | | |
+    \_/\_/  |_| |_|\__,_/___/___\__,_|____/ \__|_|  \___|\__,_|_| |_| |_|
+                                                                         
+  webseite : https://life4gaming.de
+  GitHub   : https://github.com/whazza1983/streaming
+  Autor    : whazza83 / whazza1983
+-->
+<html lang="{{ lang() }}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Stream</title>
+    <link rel="icon" type="image/png" sizes="48x48" href="/static/images/favicon.png" />
+
+    <!-- Video.js & HLS -->
+    <link href="https://vjs.zencdn.net/7.21.1/video-js.css" rel="stylesheet" />
+
+    <!-- App‑Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/shop.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/effects.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}" />
+
+    <script src="https://vjs.zencdn.net/7.21.1/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  </head>
+
+  <body>
+    <!-- ───────────────────────── Navbar ───────────────────────── -->
+    <header class="navbar">
+      <div class="navbar-left">
+        <span class="username">{{ _("stream_logged_in_as") }} {{ username }}</span>
+      </div>
+      <div class="navbar-right">
+        <button id="toggle-theme" title="Dark/Light">☀️</button>
+        <a href="{{ url_for('logout') }}">Logout</a>
+      </div>
+    </header>
+
+    <!-- ───────────────────────── Shop Popup ───────────────────────── -->
+    <div id="shop-popup" class="shop-popup">
+      <div class="shop-content">
+        <h3>{{ _("stream_shop") }}</h3>
+
+        <nav class="shop-tabs">
+          <button data-cat="smilie">😊 {{ _("stream_smilies") }}</button>
+          <button data-cat="color">🎨 {{ _("stream_colors") }}</button>
+          <button data-cat="font">🔤 {{ _("stream_fonts") }}</button>
+          <button data-cat="effect">✨ {{ _("stream_effects") }}</button>
+        </nav>
+
+        <div id="shop-list" class="shop-list">{{ _("stream_choose_category") }}</div>
+
+        <button
+          class="btn-close"
+          onclick="document.getElementById('shop-popup').style.display='none'"
+        >✖</button>
+      </div>
+    </div>
+
+    <!-- ───────────────────────── Inventory Popup ───────────────────────── -->
+    <div id="inv-popup" class="inv-popup">
+      <button
+        id="inv-close"
+        class="btn-close"
+        onclick="document.getElementById('inv-popup').style.display='none'"
+      >✖</button>
+      <h3>{{ _("stream_inventory") }}</h3>
+    </div>
+
+    <!-- ───────────────────────── Settings Popup ───────────────────────── -->
+    <div id="settings-popup" class="settings-popup">
+      <button
+        class="btn-close"
+        onclick="document.getElementById('settings-popup').style.display='none'"
+      >✖</button>
+      <h3>{{ _('stream_settings') }}</h3>
+
+      <div class="setting-row">
+        <span>{{ _('stream_language') }}</span>
+
+        <div class="lang-switch-radio">
+          <input
+            id="lang-de"
+            type="radio"
+            name="lang"
+            value="de"
+            {{ 'checked' if lang() == 'de' else '' }}
+          />
+          <label for="lang-de">DE</label>
+
+          <input
+            id="lang-en"
+            type="radio"
+            name="lang"
+            value="en"
+            {{ 'checked' if lang() == 'en' else '' }}
+          />
+          <label for="lang-en">EN</label>
+        </div>
+      </div>
+
+      {% if is_admin %}
+      <div class="setting-row">
+        <a href="{{ url_for('admin_panel') }}" class="btn-admin" target="_blank">
+          ⚙️ {{ _('stream_admin_panel') }}
+        </a>
+      </div>
+      {% endif %}
+
+      <div class="setting-row column">
+        <label>
+          <input type="checkbox" id="chk-effects" />
+          {{ _('stream_reduce_animations') }}
+        </label>
+        <small class="setting-hint">
+          {{ _('stream_reduce_animations_info') }}
+        </small>
+      </div>
+    </div>
+
+    <!-- ───────────────────────── Main Layout ───────────────────────── -->
+    <main class="layout">
+      <div class="left-column">
+        <!-- Video Section -->
+        <section class="video-section">
+          <video
+            id="hls-video"
+            class="video-js vjs-default-skin"
+            controls
+            autoplay
+            muted
+            playsinline
+            poster="/static/images/stream_offline.jpg"
+          ></video>
+        </section>
+
+        <!-- Stream Stats -->
+        <div id="stream-stats" class="stats-panel">
+          <div>{{ _("stream_resolution") }} –×–</div>
+          <div>{{ _("stream_buffer") }} – s</div>
+        </div>
+      </div>
+
+      <div class="right-column">
+        <!-- ───────────── Chat Section ───────────── -->
+        <aside class="chat-section">
+          <!-- Chat Header -->
+          <div class="chat-header">
+            <div class="header-left">
+              <span class="chat-title">{{ _("stream_stream_chat") }}</span>
+            </div>
+
+            <div class="header-right">
+              <span id="member-toggle" class="icon-members">👥</span>
+
+              <div id="online-popup" class="online-popup">
+                <h4>{{ _("stream_online_users") }}</h4>
+                <ul id="online-list"></ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chat Messages -->
+          <div id="chat-box" class="chat-box"></div>
+
+          <!-- Chat Divider -->
+          <div class="chat-divider">
+            <span id="points-display" class="points-display">🪙 {{ points }}</span>
+            <button id="toggle-shop" title="{{ _("stream_shop") }}">🛒</button>
+            <button id="inv-toggle" title="{{ _("stream_effect_inventory") }}">✨</button>
+            <button id="settings-btn" title="{{ _('stream_settings') }}">⚙️</button>
+          </div>
+
+          <!-- Chat Input -->
+          <div class="chat-input">
+            <div class="input-wrapper">
+              <button id="smilie-toggle" title="Smilies">😊</button>
+              <input id="chat-input" placeholder="{{ _("stream_ph_message") }}" />
+              <div id="smilie-popup" class="smilie-popup"></div>
+            </div>
+
+            <button
+              id="cancel-eff"
+              title="{{ _("stream_ttl_cancel_effect") }}"
+              style="display: none;"
+            >❌</button>
+            <button id="send-chat">➤</button>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <!-- ───────────────────────── Scripts ───────────────────────── -->
+    <script>
+      const LANG = "{{ lang() }}";
+      const t = (k, ...p) => (window.I18N?.[k] ?? k).replace(/\{(\d+)}/g, (_, i) => p[i] ?? `{${i}}`);
+
+      async function loadI18N() {
+        const res = await fetch(`/static/lang/${LANG}.json`);
+        window.I18N = await res.json();
+      }
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        try {
+          await loadI18N();
+        } catch (err) {
+          console.error('I18N-Error:', err);
+        }
+
+        // Theme Handling -------------------------------------------------
+        const themeBtn = document.getElementById('toggle-theme');
+        const applyTheme = (theme) => {
+          const dark = theme === 'dark';
+          document.body.classList.toggle('dark', dark);
+          themeBtn.textContent = dark ? '🌙' : '☀️';
+          localStorage.setItem('theme', dark ? 'dark' : 'light');
+        };
+
+        applyTheme(localStorage.getItem('theme') || 'light');
+        themeBtn.onclick = () => {
+          const darkNow = document.body.classList.contains('dark');
+          applyTheme(darkNow ? 'light' : 'dark');
+        };
+
+        // HLS Player ------------------------------------------------------
+        const video = document.getElementById('hls-video');
+        video.muted = true;
+        const statsPanel = document.getElementById('stream-stats');
+        const hlsSrc = "{{ stream_base_url }}/hls/{{ stream_suffix }}.m3u8?token={{ access_token }}";
+        const OFFLINE_IMAGE = '/static/images/stream_offline.jpg';
+
+        const POLL_MS = 5_000;
+        const NO_FRAG_MS = 15_000;
+
+        let hls = null;
+        let lastFrag = 0;
+
+        const checkStream = async () => {
+          try {
+            const r = await fetch(hlsSrc, { method: 'HEAD', cache: 'no-store' });
+            return r.ok;
+          } catch {
+            return false;
+          }
+        };
+
+        async function initPlayer() {
+          if (await checkStream() && Hls.isSupported()) {
+            hls = new Hls();
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(hlsSrc));
+            hls.on(Hls.Events.MANIFEST_PARSED, async () => {
+              lastFrag = Date.now();
+              try {
+                await video.play();
+              } catch {}
+            });
+            hls.on(Hls.Events.FRAG_LOADED, () => {
+              lastFrag = Date.now();
+            });
+            setInterval(updateStats, 2_000);
+            return;
+          }
+          showOffline();
+        }
+
+        video.addEventListener(
+          'click',
+          (e) => {
+            e.preventDefault();
+            video.muted = false;
+            video.play().catch(() => {});
+          },
+          { once: true }
+        );
+
+        const updateStats = () => {
+          const w = video.videoWidth || '–';
+          const h = video.videoHeight || '–';
+          const buf = video.buffered.length
+            ? Math.round(video.buffered.end(video.buffered.length - 1) - video.currentTime)
+            : 0;
+
+          statsPanel.innerHTML = `<div>Auflösung: ${w}×${h}</div><div>Buffer: ${buf} s</div>`;
+        };
+
+        const showOffline = () => {
+          if (hls) {
+            hls.detachMedia();
+            hls.destroy();
+            hls = null;
+          }
+
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
+          video.poster = OFFLINE_IMAGE;
+          statsPanel.style.display = 'none';
+        };
+
+        setInterval(() => {
+          if (hls && Date.now() - lastFrag > NO_FRAG_MS) {
+            showOffline();
+          }
+        }, POLL_MS);
+
+        await initPlayer();
+
+        // ----------------------------------------------------------------
+        // Socket‑IO Chat Logic
+        // ----------------------------------------------------------------
+        const socket = io();
+        const username = "{{ username }}";
+        const myColor = "{{ user_color }}";
+
+        const userColors = { [username]: myColor };
+        const initialColors = await fetch('/api/online_users').then((r) => r.json()).catch(() => []);
+        initialColors.forEach((u) => {
+          userColors[u.username] = u.color;
+        });
+
+        const chatBox = document.getElementById('chat-box');
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-chat');
+        const smiliePop = document.getElementById('smilie-popup');
+
+        const ALL_SMILIES = {{ all_smilies | tojson | safe }};
+        const SMILIE_NAMES = Array.isArray(ALL_SMILIES) ? ALL_SMILIES : Object.keys(ALL_SMILIES);
+
+        let allowedSmilies = [];
+        let effects = {};
+        let activeEffect = null;
+        let lastSentText = '';
+
+        let reduceEffects = JSON.parse(localStorage.getItem('reduceEffects') || 'false');
+
+        // Existing effect spans -----------------------------------------
+        document.querySelectorAll('#chat-box span[data-effect]').forEach((span) => {
+          const eff = span.dataset.effect;
+          if (['glitch', 'blur', 'wave'].includes(eff)) {
+            span.classList.toggle(`effect-${eff}`, !reduceEffects);
+          }
+        });
+
+        // Current font handling -----------------------------------------
+        const dbFont = "{{ user_font }}";
+        let currentFont = dbFont || localStorage.getItem('currentFont') || '';
+
+        const fontCss = (n) => `'${n}', sans-serif`;
+        if (currentFont) {
+          chatInput.style.fontFamily = fontCss(currentFont);
+        }
+
+        // ----------------------------------------------------------------
+        // Popups & UI Controls
+        // ----------------------------------------------------------------
+        const invBtn = document.getElementById('inv-toggle');
+        const setBtn = document.getElementById('settings-btn');
+        const settingsPop = document.getElementById('settings-popup');
+        const chkEffects = document.getElementById('chk-effects');
+        const invPop = document.getElementById('inv-popup');
+        const cancelEff = document.getElementById('cancel-eff');
+
+        const updateTokenCounter = () => {
+          const total = Object.values(effects).reduce((a, b) => a + b, 0);
+          invBtn.textContent = `✨ ${total}`;
+        };
+
+        socket.emit('user_online', { username });
+
+        // Language switch ----------------------------------------------
+        settingsPop.querySelectorAll('input[name="lang"]').forEach((rb) => {
+          rb.onchange = () => {
+            const url = new URL(location.href);
+            url.searchParams.set('lang', rb.value);
+            location.href = url.toString();
+          };
+        });
+
+        // Reduce effects toggle ----------------------------------------
+        chkEffects.checked = reduceEffects;
+        chkEffects.onchange = () => {
+          reduceEffects = chkEffects.checked;
+          localStorage.setItem('reduceEffects', reduceEffects);
+
+          document.querySelectorAll('#chat-box span[data-effect]').forEach((span) => {
+            const eff = span.dataset.effect;
+            if (['glitch', 'blur', 'wave'].includes(eff)) {
+              span.classList.toggle(`effect-${eff}`, !reduceEffects);
+            }
+          });
+        };
+
+        // Inventory popup ----------------------------------------------
+        invBtn.onclick = async () => {
+          const wasOpen = invPop.style.display === 'block';
+          closeAllPopups();
+
+          if (!wasOpen) {
+            effects = await fetch('/shop/inventory/effect').then((r) => r.json());
+            renderInv();
+            invPop.style.display = 'block';
+          }
+        };
+
+        cancelEff.onclick = () => {
+          activeEffect = null;
+          cancelEff.style.display = 'none';
+          invBtn.textContent = '✨';
+        };
+
+        setBtn.onclick = () => {
+          const wasOpen = settingsPop.style.display === 'block';
+          closeAllPopups();
+
+          if (!wasOpen) settingsPop.style.display = 'block';
+        };
+
+        function renderInv() {
+          invPop.querySelectorAll('.inv-row').forEach((el) => el.remove());
+          Object.entries(effects).forEach(([name, qty]) => {
+            if (qty < 1) return;
+
+            const row = document.createElement('div');
+            row.className = 'inv-row';
+            row.innerHTML = `
+              <span>${name} × ${qty}</span>
+              <button class="use" data-eff="${name}">✔</button>
+            `;
+            invPop.appendChild(row);
+          });
+
+          invPop.querySelectorAll('.use').forEach((btn) => {
+            btn.onclick = () => {
+              activeEffect = btn.dataset.eff;
+              cancelEff.style.display = 'inline-block';
+              invBtn.textContent = `✨ ${activeEffect}`;
+              invPop.style.display = 'none';
+            };
+          });
+
+          updateTokenCounter();
+        }
+
+        // Smilie popup --------------------------------------------------
+        fetch('/shop/unlocked_smilies')
+          .then((r) => r.json())
+          .then((list) => {
+            allowedSmilies = list;
+            list.forEach((n) => {
+              const img = new Image();
+              img.src = `/static/smilie/${n}.webp`;
+              img.title = `:${n}:`;
+              img.onclick = () => {
+                insertAtCursor(chatInput, ` :${n}: `);
+                smiliePop.style.display = 'none';
+              };
+              smiliePop.appendChild(img);
+            });
+          });
+
+        function insertAtCursor(el, txt) {
+          const start = el.selectionStart;
+          const end = el.selectionEnd;
+          const before = el.value.slice(0, start);
+          const after = el.value.slice(end);
+          el.value = before + txt + after;
+          const pos = start + txt.length;
+          el.selectionStart = el.selectionEnd = pos;
+          el.focus();
+        }
+
+        document.getElementById('smilie-toggle').onclick = () => {
+          smiliePop.style.display = smiliePop.style.display === 'grid' ? 'none' : 'grid';
+        };
+
+        // Highlight unknown smilie tag ----------------------------------
+        let highlightTimer = null;
+        function highlightSmilieTag(tag) {
+          clearTimeout(highlightTimer);
+          const cleaned = chatInput.value.replace(/⛔/g, '');
+          const re = new RegExp(`(:${tag}:)`, 'i');
+          chatInput.value = cleaned.replace(re, '⛔$1⛔');
+          chatInput.classList.add('smilie-error');
+
+          highlightTimer = setTimeout(() => {
+            chatInput.value = cleaned;
+            chatInput.classList.remove('smilie-error');
+          }, 3_000);
+        }
+
+        function removeSmilieHighlight() {
+          clearTimeout(highlightTimer);
+          chatInput.value = chatInput.value.replace(/⛔/g, '');
+          chatInput.classList.remove('smilie-error');
+        }
+
+        // Name colors repaint ------------------------------------------
+        function repaintNames() {
+          document.querySelectorAll('#chat-box strong').forEach((tag) => {
+            const c = userColors[tag.textContent];
+            if (c) tag.style.color = c;
+          });
+        }
+
+        // Message rendering --------------------------------------------
+        const seen = new Set();
+        function renderSmilies(txt) {
+          return txt.replace(/:([\w]+):/g, (_, n) =>
+            SMILIE_NAMES.includes(n)
+              ? `<img src="/static/smilie/${n}.webp" style="width:20px;vertical-align:middle;">`
+              : `:${n}:`
+          );
+        }
+
+        function addMsg(d) {
+          if (seen.has(d.id)) return;
+          seen.add(d.id);
+
+          if (d.color && !userColors[d.username]) {
+            userColors[d.username] = d.color;
+          }
+          const color = userColors[d.username] || d.color;
+
+          const p = document.createElement('p');
+          p.innerHTML = `
+            <strong style="color:${color};">${d.username}</strong>: 
+            <span class="${d.effect ? `effect-${d.effect}` : ''}">
+              ${renderSmilies(d.text)}
+            </span>
+          `;
+
+          const span = p.querySelector('span');
+          if (d.font) span.style.fontFamily = fontCss(d.font);
+
+          if (d.effect) {
+            span.dataset.effect = d.effect;
+            if (d.effect === 'glitch') {
+              span.dataset.glitch = span.textContent;
+            }
+          }
+
+          if (d.effect === 'wave') {
+            const chars = span.textContent.split('');
+            span.textContent = '';
+            chars.forEach((ch, idx) => {
+              const s = document.createElement('span');
+              s.textContent = ch;
+              s.style.setProperty('--i', idx);
+              span.appendChild(s);
+            });
+            span.classList.add('effect-wave');
+          }
+
+          if (reduceEffects && ['glitch', 'blur', 'wave'].includes(d.effect)) {
+            span.classList.remove(`effect-${d.effect}`);
+          }
+
+          chatBox.appendChild(p);
+          chatBox.scrollTop = chatBox.scrollHeight;
+
+          if (d.username === username && d.text === lastSentText) {
+            chatInput.value = '';
+            lastSentText = '';
+          }
+        }
+
+        // ----------------------------------------------------------------
+        // Chat send & receive
+        // ----------------------------------------------------------------
+        sendBtn.onclick = sendChat;
+        chatInput.onkeydown = (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            sendChat();
+          }
+        };
+
+        function sendChat() {
+          removeSmilieHighlight();
+          const txt = chatInput.value.trim();
+          if (!txt) return;
+
+          lastSentText = txt;
+          socket.emit('send_message', {
+            username,
+            text: txt,
+            effect: activeEffect,
+            font: currentFont
+          });
+
+          if (activeEffect) {
+            effects[activeEffect]--;
+            updateTokenCounter();
+            activeEffect = null;
+            cancelEff.style.display = 'none';
+            invBtn.textContent = '✨';
+          }
+        }
+
+        socket.on('receive_message', addMsg);
+
+        socket.on('smilie_error', (data) => {
+          const m = data.message.match(/:([\w]+):/);
+          if (m) highlightSmilieTag(m[1]);
+        });
+
+        socket.on('chat_history', (msgs) => {
+          msgs.forEach(addMsg);
+          [...chatBox.querySelectorAll('strong')].forEach((s) => {
+            if (s.textContent === username) s.style.color = myColor;
+          });
+        });
+
+        socket.on('user_data_changed', (d) => {
+          if (d.color) {
+            userColors[d.username] = d.color;
+            repaintNames();
+          }
+
+          if (d.username === username) {
+            document.getElementById('points-display').textContent = `🪙 ${d.points}`;
+            if (d.effects) {
+              effects = d.effects;
+              updateTokenCounter();
+            }
+          }
+
+          [...chatBox.querySelectorAll('strong')].forEach((s) => {
+            if (s.textContent === d.username) s.style.color = d.color;
+          });
+          [...document.querySelectorAll('#online-list span')].forEach((span) => {
+            if (span.textContent === d.username) span.style.color = d.color;
+          });
+        });
+
+        socket.on('force_logout', () => {
+          alert('Dein Account wurde gesperrt – du wirst abgemeldet.');
+          window.location.href = '/logout';
+        });
+
+        // ----------------------------------------------------------------
+        // Shop Logic
+        // ----------------------------------------------------------------
+        const shopBtn = document.getElementById('toggle-shop');
+        const shopPop = document.getElementById('shop-popup');
+        const shopList = document.getElementById('shop-list');
+        const tabBtns = document.querySelectorAll('.shop-tabs button[data-cat]');
+
+        function toggle(el) {
+          el.style.display = el.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function closeAllPopups() {
+          shopPop.style.display = 'none';
+          invPop.style.display = 'none';
+          smiliePop.style.display = 'none';
+          onlinePopup.style.display = 'none';
+          settingsPop.style.display = 'none';
+        }
+
+        shopBtn.onclick = () => {
+          const wasOpen = shopPop.style.display === 'block';
+          closeAllPopups();
+
+          if (!wasOpen) {
+            shopPop.style.display = 'block';
+            tabBtns.forEach((b) => b.classList.remove('active'));
+            document.querySelector('[data-cat="smilie"]').classList.add('active');
+            loadShop('smilie');
+          }
+        };
+
+        tabBtns.forEach((b) => {
+          b.onclick = () => {
+            tabBtns.forEach((x) => x.classList.remove('active'));
+            b.classList.add('active');
+            loadShop(b.dataset.cat);
+          };
+        });
+
+        async function loadShop(cat) {
+          shopList.textContent = 'Lade …';
+          const items = await fetch(`/shop/catalog/${cat}`).then((r) => r.json());
+          shopList.innerHTML = '';
+
+          items.forEach((it) => {
+            const row = document.createElement('div');
+            row.className = 'shop-item';
+
+            if (cat === 'color') {
+              row.innerHTML = `
+                <span class="color-preview" style="background:${it.name}"></span>
+                <span style="color:${it.name}">${username}</span>
+                ${
+                  it.active
+                    ? '<span class="active-check">{{ _("stream_active") }} ✅</span>'
+                    : `<button data-item="${it.name}">
+                         {{ _("stream_buy") }} (${it.cost})
+                       </button>`
+                }
+              `;
+            } else if (cat === 'font') {
+              row.innerHTML = `
+                <span class="font-preview" style="font-family:'${it.name}', sans-serif">Aa</span>
+                <span class="font-name" style="font-family:'${it.name}', sans-serif">${it.name}</span>
+                ${
+                  it.active
+                    ? '<span class="active-check">{{ _("stream_active") }} ✅</span>'
+                    : `<button data-item="${it.name}">
+                         {{ _("stream_buy") }} (${it.cost})
+                       </button>`
+                }
+              `;
+            } else if (cat === 'effect') {
+              let previewHTML = '';
+
+              if (it.name === 'wave') {
+                [...it.name].forEach((ch, idx) => {
+                  previewHTML += `<span style="--i:${idx}">${ch}</span>`;
+                });
+                previewHTML = `<span class="effect-preview effect-${it.name}">${previewHTML}</span>`;
+              } else {
+                previewHTML = `
+                  <span class="effect-preview effect-${it.name}" ${it.name === 'glitch' ? `data-glitch="${it.name}"` : ''}>
+                    ${it.name}
+                  </span>`;
+              }
+
+              row.innerHTML = `
+                ${previewHTML}
+                <span></span>
+                <button data-item="${it.name}">
+                  {{ _("stream_buy") }} 1x (${it.cost})
+                </button>
+              `;
+            } else {
+              row.innerHTML = `
+                <img src="/static/smilie/${it.name}.webp" alt="${it.name}" />
+                <span>:${it.name}:</span>
+                ${
+                  it.unlocked
+                    ? '<span class="active-check">✅</span>'
+                    : `<button data-item="${it.name}">
+                         {{ _("stream_buy") }} (${it.cost})
+                       </button>`
+                }
+              `;
+            }
+
+            shopList.appendChild(row);
+          });
+
+          shopList.querySelectorAll('button[data-item]').forEach((btn) => {
+            btn.onclick = () => buyItem(cat, btn.dataset.item, btn);
+          });
+        }
+
+        async function buyItem(cat, item, btn) {
+          const o = await fetch(`/shop/buy/${cat}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item })
+          }).then((r) => r.json());
+
+          if (!o.success) {
+            alert(o.message || 'Fehler');
+            return;
+          }
+
+          document.getElementById('points-display').textContent = `🪙 ${o.new_points}`;
+
+          if (cat === 'smilie') {
+            btn.parentElement.innerHTML = '✅';
+            allowedSmilies.push(item);
+
+            const img = document.createElement('img');
+            img.src = `/static/smilie/${item}.webp`;
+            img.alt = img.title = `:${item}:`;
+            img.style.cursor = 'pointer';
+            img.onclick = () => {
+              chatInput.value += ` :${item}: `;
+              smiliePop.style.display = 'none';
+            };
+            smiliePop.appendChild(img);
+          } else if (cat === 'effect') {
+            effects[item] = (effects[item] || 0) + 1;
+            updateTokenCounter();
+            return;
+          } else if (cat === 'color') {
+            btn.parentElement.innerHTML = '✅';
+            userColors[username] = item;
+            repaintNames();
+            [...chatBox.querySelectorAll('strong')].forEach((s) => {
+              if (s.textContent === username) s.style.color = item;
+            });
+            loadShop('color');
+            return;
+          } else if (cat === 'font') {
+            btn.parentElement.innerHTML = '✅';
+            currentFont = item;
+            localStorage.setItem('currentFont', currentFont);
+            chatInput.style.fontFamily = fontCss(currentFont);
+            loadShop('font');
+          }
+        }
+
+        // ----------------------------------------------------------------
+        // Online user list popup
+        // ----------------------------------------------------------------
+        const memberToggle = document.getElementById('member-toggle');
+        const onlinePopup = document.getElementById('online-popup');
+
+        memberToggle.onclick = () => {
+          onlinePopup.style.display = onlinePopup.style.display === 'block' ? 'none' : 'block';
+        };
+
+        document.onclick = (e) => {
+          if (
+            !shopPop.contains(e.target) &&
+            e.target !== shopBtn &&
+            !invPop.contains(e.target) &&
+            e.target !== invBtn &&
+            !smiliePop.contains(e.target) &&
+            e.target !== document.getElementById('smilie-toggle') &&
+            !onlinePopup.contains(e.target) &&
+            e.target !== memberToggle &&
+            !settingsPop.contains(e.target) &&
+            e.target !== setBtn
+          ) {
+            closeAllPopups();
+          }
+        };
+
+        socket.on('online_users', (users) => {
+          users.forEach((u) => (userColors[u.username] = u.color));
+          repaintNames();
+
+          const lst = document.getElementById('online-list');
+          lst.innerHTML = '';
+          users
+            .filter((u) => u.online)
+            .forEach((u) => {
+              const li = document.createElement('li');
+              li.innerHTML = `
+                <span class="status-dot online">●</span>
+                <span style="color:${u.color}">${u.username}</span>
+              `;
+              lst.appendChild(li);
+            });
+        });
+      });
+    </script>
+  </body>
+</html>

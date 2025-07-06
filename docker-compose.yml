@@ -1,0 +1,20 @@
+services:
+  rtmp:
+    image: tiangolo/nginx-rtmp:latest
+    ports:
+      - "1935:1935"
+      - "8090:80"
+    volumes:
+      - /portainer/nginx:/etc/nginx
+      - /portainer/hls:/tmp/hls
+
+  web:
+    build: .
+    ports:
+      - "5015:5015"
+    volumes:
+      - /portainer/whazzastream:/app
+    depends_on:
+      - rtmp
+    environment:
+      - FLASK_ENV=development

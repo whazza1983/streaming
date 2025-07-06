@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<!--
+ __        ___                        ____  _                            
+ \ \      / / |__   __ _ __________ _/ ___|| |_ _ __ ___  __ _ _ __ ___  
+  \ \ /\ / /| '_ \ / _` |_  /_  / _` \___ \| __| '__/ _ \/ _` | '_ ` _ \ 
+   \ V  V / | | | | (_| |/ / / / (_| |___) | |_| | |  __/ (_| | | | | | |
+    \_/\_/  |_| |_|\__,_/___/___\__,_|____/ \__|_|  \___|\__,_|_| |_| |_|
+                                                                         
+  webseite : https://life4gaming.de
+  GitHub   : https://github.com/whazza1983/streaming
+  Autor    : whazza83 / whazza1983
+-->
+<html lang="{{ lang() }}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login</title>
+  <link rel="icon" type="image/png" sizes="48x48" href="/static/images/favicon.png" />
+
+  <!-- Main stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style_login.css') }}">
+</head>
+<body>
+
+  <!-- LOGIN BOX -->
+ <div class="login-wrapper">
+  <div class="login-box">
+
+    <!-- HEADER & LANGUAGE SWITCH -->
+    <header class="login-header">
+      <h2>{{ _("login_login") }}</h2>
+      <nav class="lang-switch">
+        <a href="{{ url_for('login', lang='de') }}" class="{{ 'active' if lang() == 'de' else '' }}">DE</a>
+        <a href="{{ url_for('login', lang='en') }}" class="{{ 'active' if lang() == 'en' else '' }}">EN</a>
+      </nav>
+    </header>
+
+    <!-- ERROR MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          {% if category == 'error' %}
+            <div class="error">{{ msg }}</div>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- LOGIN FORM -->
+    <form method="post">
+      <input type="text" name="username" placeholder="{{ _('login_username_label') }}" required>
+      <input type="password" name="password" placeholder="{{ _('login_password_label') }}" required>
+      <button type="submit">{{ _('login_sign_in') }}</button>
+    </form>
+  </div>
+ </div>
+
+  <footer class="login-footer">
+    <p>
+      © {{ datetime.utcnow().year }} WhazzaStream ·
+      <a href="https://life4gaming.de"  target="_blank" rel="noopener">Website</a> ·
+      <a href="https://github.com/whazza1983/streaming" target="_blank" rel="noopener">GitHub</a>
+    </p>
+  </footer>
+</body>
+</html>

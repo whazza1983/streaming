@@ -1,0 +1,135 @@
+@font-face {
+  font-family: 'Codystar';
+  font-style : normal;
+  font-weight: 300;
+  src: url('../fonts/Codystar/Codystar-Light.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Codystar';
+  font-style : normal;
+  font-weight: 400;
+  src: url('../fonts/Codystar/Codystar-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Comic Neue';
+  font-style : normal;
+  font-weight: 700;
+  src: url('../fonts/ComicNeue/ComicNeue-Bold.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Comic Neue';
+  font-style : italic;
+  font-weight: 700;
+  src: url('../fonts/ComicNeue/ComicNeue-BoldItalic.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Comic Neue';
+  font-style : italic;
+  font-weight: 400;
+  src: url('../fonts/ComicNeue/ComicNeue-Italic.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Comic Neue';
+  font-style : normal;
+  font-weight: 400;
+  src: url('../fonts/ComicNeue/ComicNeue-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Dancing Script';
+  font-style : normal;
+  font-weight: 400;
+  src: url('../fonts/DancingScript/DancingScript-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Dancing Script';
+  font-style : normal;
+  font-weight: 600;
+  src: url('../fonts/DancingScript/DancingScript-SemiBold.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Lobster';
+  font-style : normal;
+  font-weight: 400;
+  src: url('../fonts/Lobster/Lobster-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Luckiest Guy';
+  font-style : normal;
+  font-weight: 400;
+  src: url('../fonts/LuckiestGuy/LuckiestGuy-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  font-style : normal;
+  font-weight: 400;
+  src: url('../fonts/Poppins/poppins-v23-latin-regular.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style : normal;
+  font-weight: 600;
+  src: url('../fonts/Poppins/poppins-v23-latin-600.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Press Start 2P';
+  font-style : normal;
+  font-weight: 400;
+  src: url('../fonts/PressStart2P/PressStart2P-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Roboto Slab';
+  font-style : normal;
+  font-weight: 700;
+  src: url('../fonts/RobotoSlab/RobotoSlab-Bold.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Roboto Slab';
+  font-style : normal;
+  font-weight: 400;
+  src: url('../fonts/RobotoSlab/RobotoSlab-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Source Code Pro';
+  font-style : normal;
+  font-weight: 400;
+  src: url('../fonts/SourceCodePro/SourceCodePro-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Source Code Pro';
+  font-style : normal;
+  font-weight: 600;
+  src: url('../fonts/SourceCodePro/SourceCodePro-SemiBold.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'VT323';
+  font-style : normal;
+  font-weight: 400;
+  src: url('../fonts/VT323/VT323-Regular.ttf') format('truetype');
+  font-display: swap;
+}

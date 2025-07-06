@@ -1,0 +1,41 @@
+.settings-popup {
+  display:none;
+  position:fixed;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  z-index:10050;
+  background:#fff;
+  border-radius:10px;
+  box-shadow:0 0 20px rgba(0,0,0,.30);
+  max-width:340px;
+  width:90%;
+  padding:1.5rem 2rem;
+  line-height:1.4;
+}
+
+body.dark .settings-popup {
+  background:#1e1e1e;
+  color:#eee;
+}
+
+.setting-row {
+  display:flex;
+  align-items:center;
+  gap:.75rem;
+  margin-bottom:1.1rem;
+  flex-wrap:wrap;
+}
+
+.setting-row input[type="radio"],
+.setting-row input[type="checkbox"] {
+  accent-color:#6c63ff;
+  transform:scale(1.15);
+  cursor:pointer;
+}
+
+.settings-popup .btn-close {
+  position:absolute; top:.4rem; right:.4rem;
+  background:transparent; border:none;
+  font-size:1.25rem; cursor:pointer;
+  color:inherit;
+}
