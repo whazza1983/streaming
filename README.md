@@ -36,3 +36,13 @@ cd streaming
 # Installer vorbereiten und starten
 chmod 0755 install.sh
 ./install.sh
+
+```
+
+---
+
+**Info**
+
+- **Smilies**: Animierte Noto-Emoji von  
+  <https://googlefonts.github.io/noto-emoji-animation/>
+- **Fonts**: Verschiedene Google-Fonts, komplett **offline** im Repository enthalten (keine externen Requests)
